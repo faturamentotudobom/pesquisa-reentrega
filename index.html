@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buscador Dinâmico de Planilha</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background-color: #f4f4f9; }
+        
+        /* Aumentado para acomodar melhor colunas que se adaptam ao texto */
+        .container { max-width: 95%; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        
+        .busca-container { display: flex; gap: 10px; margin-bottom: 20px; max-width: 500px; }
+        input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-size: 16px; }
+        
+        button { padding: 12px 24px; background-color: #007bff; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold; }
+        button:hover { background-color: #0056b3; }
+        
+        /* Wrapper para permitir rolagem se a tabela ficar maior que a tela */
+        .tabela-wrapper { overflow-x: auto; margin-top: 10px; }
+        
+        table { width: 100%; border-collapse: collapse; display: none; }
+        
+        /* nowrap faz a coluna se esticar para caber o texto perfeitamente em uma linha */
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; white-space: nowrap; }
+        th { background-color: #007bff; color: white; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        
+        .status { color: #721c24; background-color: #f8d7da; padding: 10px; border-radius: 4px; display: none; margin-bottom: 15px; }
+        .sem-resultados { color: #721c24; background-color: #f8d7da; padding: 12px; border-radius: 4px; font-weight: bold; margin-top: 10px; display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Buscar na Planilha - Controle de Reentregas</h2>
+    <div id="mensagemErro" class="status"></div>
+    
+    <div class="busca-container">
+        <input type="text" id="buscar" placeholder="Digite o número exato do RCA...">
+        <button id="btnPesquisar" onclick="buscarDados()">Pesquisar</button>
+    </div>
+    
+    <div id="semResultados" class="sem-resultados">Aviso: Nenhum registro de REENTREGA localizado para o RCA informado.</div>
+
+    <div class="tabela-wrapper">
+        <table id="tabelaDados">
+            <thead>
+                <tr id="cabecalho"></tr>
+            </thead>
+            <tbody id="corpoTabela"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    const urlCSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSdmR8wZAZ6h2fxuHhWEmLoNBh-ps4a2-7M1IOTN5Dyn0h0qMDRdEjmNfKho2yvJCrAhJmA6w83WGUF/pub?gid=0&single=true&output=csv'; 
+    let dadosPlanilha = [];
+
+    async function carregarDados() {
+        const divErro = document.getElementById('mensagemErro');
+        try {
+            const resposta = await fetch(urlCSV);
+            if (!resposta.ok) throw new Error("Não foi possível acessar o link da planilha.");
+
+            const texto = await resposta.text();
+            const separador = texto.includes(';') ? ';' : ',';
+            const linhas = texto.split('\n').map(linha => linha.split(separador));
+            
+            dadosPlanilha = linhas.map(linha => 
+                linha.map(celula => celula.replace(/[\r\n]+/g, '').trim())
+            ).filter(linha => linha.some(celula => celula !== ''));
+
+            if (dadosPlanilha.length > 0) {
+                divErro.style.display = 'none';
+            } else {
+                showError("A planilha está vazia.");
+            }
+        } catch (erro) {
+            console.error(erro);
+            showError("Erro ao carregar dados: " + erro.message);
+        }
+    }
+
+    function showError(mensagem) {
+        const divErro = document.getElementById('mensagemErro');
+        divErro.innerHTML = mensagem;
+        divErro.style.display = 'block';
+    }
+
+    function renderizarTabela(dados, mostrarApenasCabecalho = false) {
+        const tabela = document.getElementById('tabelaDados');
+        const cabecalho = document.getElementById('cabecalho');
+        const corpo = document.getElementById('corpoTabela');
+        
+        cabecalho.innerHTML = '';
+        corpo.innerHTML = '';
+
+        if(dados.length === 0) {
+            tabela.style.display = 'none';
+            return;
+        }
+
+        dados[0].forEach(coluna => {
+            cabecalho.innerHTML += `<th>${coluna}</th>`;
+        });
+
+        if (mostrarApenasCabecalho) {
+            tabela.style.display = 'none';
+            return;
+        }
+
+        for (let i = 1; i < dados.length; i++) {
+            let linhaHtml = '<tr>';
+            dados[i].forEach(celula => {
+                linhaHtml += `<td>${celula}</td>`;
+            });
+            linhaHtml += '</tr>';
+            corpo.innerHTML += linhaHtml;
+        }
+
+        tabela.style.display = 'table';
+    }
+
+    function buscarDados() {
+        const termo = document.getElementById('buscar').value.toLowerCase().trim();
+        const divSemResultados = document.getElementById('semResultados');
+        
+        if (!termo) {
+            renderizarTabela([], true);
+            divSemResultados.style.display = 'none';
+            return;
+        }
+
+        const cabecalho = dadosPlanilha[0];
+        const idxRca = cabecalho.findIndex(col => col.toUpperCase() === 'RCA');
+        const idxSituacao = cabecalho.findIndex(col => col.toUpperCase() === 'SITUACAO' || col.toUpperCase() === 'SITUAÇÃO');
+
+        if (idxRca === -1 || idxSituacao === -1) {
+            alert("Erro interno: Não foi possível localizar as colunas 'RCA' ou 'SITUACAO' na planilha.");
+            return;
+        }
+
+        const linhasFiltradas = dadosPlanilha.slice(1).filter(linha => {
+            const valorRca = linha[idxRca] ? linha[idxRca].toLowerCase() : '';
+            const valorSituacao = linha[idxSituacao] ? linha[idxSituacao].toUpperCase() : '';
+
+            // MUDANÇA CRUCIAL: Trocamos .includes(termo) por === termo para busca exata
+            const bateRca = (valorRca === termo);
+            const bateSituacao = (valorSituacao === 'REENTREGA1' || valorSituacao === 'REENTREGA2');
+
+            return bateRca && bateSituacao;
+        });
+
+        if (linhasFiltradas.length > 0) {
+            divSemResultados.style.display = 'none';
+            renderizarTabela([cabecalho, ...linhasFiltradas]);
+        } else {
+            renderizarTabela([], true);
+            divSemResultados.style.display = 'block'; // Exibe o alerta vermelho na tela
+        }
+    }
+
+    document.getElementById('buscar').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            buscarDados();
+        }
+    });
+
+    carregarDados();
+</script>
+
+</body>
+</html>
