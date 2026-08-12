@@ -2,22 +2,138 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Meta tag essencial para ajustar a escala em telas de celulares -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Buscador Dinâmico de Planilha</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 40px; background-color: #f4f4f9; }
-        .container { max-width: 95%; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .busca-container { display: flex; gap: 10px; margin-bottom: 20px; max-width: 500px; }
-        input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-size: 16px; }
-        button { padding: 12px 24px; background-color: #007bff; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold; }
-        button:hover { background-color: #0056b3; }
-        .tabela-wrapper { overflow-x: auto; margin-top: 10px; }
-        table { width: 100%; border-collapse: collapse; display: none; }
-        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; white-space: nowrap; }
-        th { background-color: #007bff; color: white; }
+        * { box-sizing: border-box; }
+        
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 0;
+            padding: 15px; 
+            background-color: #f4f4f9; 
+        }
+        
+        .container { 
+            width: 100%;
+            max-width: 1100px; 
+            margin: 0 auto; 
+            background: white; 
+            padding: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+        }
+        
+        h2 {
+            margin-top: 0;
+            font-size: 1.4rem;
+            color: #333;
+        }
+        
+        /* Layout flexível: Linha no Computador, Coluna no Celular */
+        .busca-container { 
+            display: flex; 
+            flex-direction: column;
+            gap: 10px; 
+            margin-bottom: 20px; 
+            width: 100%;
+        }
+        
+        input { 
+            width: 100%; 
+            padding: 12px 15px; 
+            border: 1px solid #ccc; 
+            border-radius: 6px; 
+            font-size: 16px; /* Evita que o iOS faça zoom automático no input */
+            min-height: 48px; /* Tamanho mínimo recomendado para toque */
+        }
+        
+        button { 
+            width: 100%;
+            padding: 12px 24px; 
+            background-color: #007bff; 
+            color: white; 
+            border: none; 
+            border-radius: 6px; 
+            font-size: 16px; 
+            cursor: pointer; 
+            font-weight: bold; 
+            min-height: 48px;
+            transition: background 0.2s;
+        }
+        
+        button:active { 
+            background-color: #004085; 
+        }
+        
+        /* Permite deslizar a tabela suavemente com o dedo no celular */
+        .tabela-wrapper { 
+            overflow-x: auto; 
+            -webkit-overflow-scrolling: touch; 
+            margin-top: 10px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            display: none; 
+        }
+        
+        th, td { 
+            border: 1px solid #ddd; 
+            padding: 10px 12px; 
+            text-align: left; 
+            white-space: nowrap; 
+            font-size: 14px;
+        }
+        
+        th { 
+            background-color: #007bff; 
+            color: white; 
+            position: sticky;
+            top: 0;
+        }
+        
         tr:nth-child(even) { background-color: #f9f9f9; }
-        .status { color: #721c24; background-color: #f8d7da; padding: 10px; border-radius: 4px; display: none; margin-bottom: 15px; }
-        .sem-resultados { color: #721c24; background-color: #f8d7da; padding: 12px; border-radius: 4px; font-weight: bold; margin-top: 10px; display: none; }
+        
+        .status { 
+            color: #721c24; 
+            background-color: #f8d7da; 
+            padding: 10px; 
+            border-radius: 6px; 
+            display: none; 
+            margin-bottom: 15px; 
+            font-size: 14px;
+        }
+        
+        .sem-resultados { 
+            color: #721c24; 
+            background-color: #f8d7da; 
+            padding: 12px; 
+            border-radius: 6px; 
+            font-weight: bold; 
+            margin-top: 10px; 
+            display: none; 
+            font-size: 14px;
+        }
+
+        /* REGRAS ESPECÍFICAS PARA TELAS MAIORES (COMPUTADORES/TABLETS) */
+        @media (min-width: 600px) {
+            body { padding: 30px; }
+            .container { padding: 25px; }
+            h2 { font-size: 1.8rem; }
+            
+            .busca-container { 
+                flex-direction: row; 
+                max-width: 600px;
+            }
+            
+            button { width: auto; }
+            th, td { font-size: 15px; padding: 12px; }
+        }
     </style>
 </head>
 <body>
@@ -44,10 +160,10 @@
 </div>
 
 <script>
-    const urlCSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTH4KEirinMtbQwYVJnJnR6K5VRyi6UTTO3nUtVnsJaHb8y60kNqSJYMt5CjKD4iSA4q_Wt_F3QeXXd/pub?gid=0&single=true&output=csv'; 
+    const urlCSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSdmR8wZAZ6h2fxuHhWEmLoNBh-ps4a2-7M1IOTN5Dyn0h0qMDRdEjmNfKho2yvJCrAhJmA6w83WGUF/pub?gid=0&single=true&output=csv'; 
     let dadosPlanilha = [];
 
-    // Função Robusta para ler CSV respeitando vírgulas dentro de aspas
+    // Parser que respeita vírgulas entre aspas
     function parseCSV(texto, separador) {
         const linhas = texto.split(/\r?\n/);
         return linhas.map(linha => {
@@ -61,10 +177,10 @@
 
                 if (char === '"') {
                     if (dentroDeAspas && proximoChar === '"') {
-                        celula += '"'; // Aspas duplas escapadas dentro do texto
+                        celula += '"';
                         i++;
                     } else {
-                        dentroDeAspas = !dentroDeAspas; // Alterna estado de aspas
+                        dentroDeAspas = !dentroDeAspas;
                     }
                 } else if (char === separador && !dentroDeAspas) {
                     resultado.push(celula.trim());
@@ -85,14 +201,9 @@
             if (!resposta.ok) throw new Error("Não foi possível acessar o link da planilha.");
 
             const texto = await resposta.text();
-            
-            // Detecta se o separador padrão é ponto e vírgula ou vírgula
             const separador = texto.includes(';') ? ';' : ',';
-            
-            // Usa o novo Parser inteligente em vez do .split simples
             const linhas = parseCSV(texto, separador);
             
-            // Limpa linhas em branco
             dadosPlanilha = linhas.filter(linha => linha.some(celula => celula !== ''));
 
             if (dadosPlanilha.length > 0) {
@@ -184,9 +295,11 @@
         }
     }
 
+    // Permite buscar ao apertar "Enter" ou "Ir/Buscar" no teclado do celular
     document.getElementById('buscar').addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
             buscarDados();
+            document.getElementById('buscar').blur(); // Fecha o teclado do celular ao pesquisar
         }
     });
 
