@@ -5,27 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Buscador Dinâmico de Planilha</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 10px; background-color: #f4f4f9; }
-        
-        /* Aumentado para acomodar melhor colunas que se adaptam ao texto */
-        .container { max-width: 95%; margin: 0 auto; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        
-        .busca-container { display: flex; gap: 10px; margin-bottom: 20px; max-width: 300px; }
-        input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 50px; box-sizing: border-box; font-size: 16px; }
-        
-        button { padding: 15px 15px; background-color: #007bff; color: white; border: none; border-radius: 50px; font-size: 16px; cursor: pointer; font-weight: bold; }
-        button:hover { background-color: #b5bff6; }
-        
-        /* Wrapper para permitir rolagem se a tabela ficar maior que a tela */
+        body { font-family: Arial, sans-serif; margin: 40px; background-color: #f4f4f9; }
+        .container { max-width: 95%; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .busca-container { display: flex; gap: 10px; margin-bottom: 20px; max-width: 500px; }
+        input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-size: 16px; }
+        button { padding: 12px 24px; background-color: #007bff; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold; }
+        button:hover { background-color: #0056b3; }
         .tabela-wrapper { overflow-x: auto; margin-top: 10px; }
-        
         table { width: 100%; border-collapse: collapse; display: none; }
-        
-        /* nowrap faz a coluna se esticar para caber o texto perfeitamente em uma linha */
         th, td { border: 1px solid #ddd; padding: 12px; text-align: left; white-space: nowrap; }
         th { background-color: #007bff; color: white; }
         tr:nth-child(even) { background-color: #f9f9f9; }
-        
         .status { color: #721c24; background-color: #f8d7da; padding: 10px; border-radius: 4px; display: none; margin-bottom: 15px; }
         .sem-resultados { color: #721c24; background-color: #f8d7da; padding: 12px; border-radius: 4px; font-weight: bold; margin-top: 10px; display: none; }
     </style>
@@ -33,12 +23,12 @@
 <body>
 
 <div class="container">
-    <h2>Buscador de Reentregas</h2>
+    <h2>Buscar na Planilha - Controle de Reentregas</h2>
     <div id="mensagemErro" class="status"></div>
     
     <div class="busca-container">
-        <input type="number" id="buscar" placeholder="Digite o código do RCA...">
-        <button id="btnPesquisar" onclick="buscarDados()">🔍</button>
+        <input type="text" id="buscar" placeholder="Digite o número exato do RCA...">
+        <button id="btnPesquisar" onclick="buscarDados()">Pesquisar</button>
     </div>
     
     <div id="semResultados" class="sem-resultados">Aviso: Nenhum registro de REENTREGA localizado para o RCA informado.</div>
@@ -54,8 +44,39 @@
 </div>
 
 <script>
-    const urlCSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSdmR8wZAZ6h2fxuHhWEmLoNBh-ps4a2-7M1IOTN5Dyn0h0qMDRdEjmNfKho2yvJCrAhJmA6w83WGUF/pub?gid=0&single=true&output=csv'; 
+    const urlCSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTH4KEirinMtbQwYVJnJnR6K5VRyi6UTTO3nUtVnsJaHb8y60kNqSJYMt5CjKD4iSA4q_Wt_F3QeXXd/pub?gid=0&single=true&output=csv'; 
     let dadosPlanilha = [];
+
+    // Função Robusta para ler CSV respeitando vírgulas dentro de aspas
+    function parseCSV(texto, separador) {
+        const linhas = texto.split(/\r?\n/);
+        return linhas.map(linha => {
+            const resultado = [];
+            let celula = '';
+            let dentroDeAspas = false;
+
+            for (let i = 0; i < linha.length; i++) {
+                const char = linha[i];
+                const proximoChar = linha[i + 1];
+
+                if (char === '"') {
+                    if (dentroDeAspas && proximoChar === '"') {
+                        celula += '"'; // Aspas duplas escapadas dentro do texto
+                        i++;
+                    } else {
+                        dentroDeAspas = !dentroDeAspas; // Alterna estado de aspas
+                    }
+                } else if (char === separador && !dentroDeAspas) {
+                    resultado.push(celula.trim());
+                    celula = '';
+                } else {
+                    celula += char;
+                }
+            }
+            resultado.push(celula.trim());
+            return resultado;
+        });
+    }
 
     async function carregarDados() {
         const divErro = document.getElementById('mensagemErro');
@@ -64,12 +85,15 @@
             if (!resposta.ok) throw new Error("Não foi possível acessar o link da planilha.");
 
             const texto = await resposta.text();
-            const separador = texto.includes(';') ? ';' : ',';
-            const linhas = texto.split('\n').map(linha => linha.split(separador));
             
-            dadosPlanilha = linhas.map(linha => 
-                linha.map(celula => celula.replace(/[\r\n]+/g, '').trim())
-            ).filter(linha => linha.some(celula => celula !== ''));
+            // Detecta se o separador padrão é ponto e vírgula ou vírgula
+            const separador = texto.includes(';') ? ';' : ',';
+            
+            // Usa o novo Parser inteligente em vez do .split simples
+            const linhas = parseCSV(texto, separador);
+            
+            // Limpa linhas em branco
+            dadosPlanilha = linhas.filter(linha => linha.some(celula => celula !== ''));
 
             if (dadosPlanilha.length > 0) {
                 divErro.style.display = 'none';
@@ -145,7 +169,6 @@
             const valorRca = linha[idxRca] ? linha[idxRca].toLowerCase() : '';
             const valorSituacao = linha[idxSituacao] ? linha[idxSituacao].toUpperCase() : '';
 
-            // MUDANÇA CRUCIAL: Trocamos .includes(termo) por === termo para busca exata
             const bateRca = (valorRca === termo);
             const bateSituacao = (valorSituacao === 'REENTREGA1' || valorSituacao === 'REENTREGA2');
 
@@ -157,7 +180,7 @@
             renderizarTabela([cabecalho, ...linhasFiltradas]);
         } else {
             renderizarTabela([], true);
-            divSemResultados.style.display = 'block'; // Exibe o alerta vermelho na tela
+            divSemResultados.style.display = 'block';
         }
     }
 
