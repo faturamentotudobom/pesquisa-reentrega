@@ -2,7 +2,6 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <!-- Meta tag essencial para ajustar a escala em telas de celulares -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Buscador Dinâmico de Planilha</title>
     <style>
@@ -31,22 +30,39 @@
             color: #333;
         }
         
-        /* Layout flexível: Linha no Computador, Coluna no Celular */
         .busca-container { 
-            display: flex; 
-            flex-direction: column;
+            display: grid; 
+            grid-template-columns: 1fr;
             gap: 10px; 
             margin-bottom: 20px; 
             width: 100%;
         }
+
+        .campo-grupo {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .campo-grupo label {
+            font-size: 12px;
+            font-weight: bold;
+            color: #555;
+        }
         
-        input { 
+        input, select { 
             width: 100%; 
-            padding: 12px 15px; 
+            padding: 10px 12px; 
             border: 1px solid #ccc; 
             border-radius: 6px; 
-            font-size: 16px; /* Evita que o iOS faça zoom automático no input */
-            min-height: 48px; /* Tamanho mínimo recomendado para toque */
+            font-size: 15px;
+            min-height: 45px;
+            background-color: white;
+        }
+
+        .btn-container {
+            display: flex;
+            align-items: flex-end;
         }
         
         button { 
@@ -59,15 +75,41 @@
             font-size: 16px; 
             cursor: pointer; 
             font-weight: bold; 
-            min-height: 48px;
+            min-height: 45px;
             transition: background 0.2s;
         }
         
-        button:active { 
-            background-color: #004085; 
+        button:active { background-color: #004085; }
+
+        /* Painel de Resumo / KPI Dashboard */
+        .resumo-container {
+            display: none;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .card-resumo {
+            background-color: #e9ecef;
+            border-left: 4px solid #007bff;
+            padding: 12px 15px;
+            border-radius: 6px;
+        }
+
+        .card-resumo .titulo {
+            font-size: 12px;
+            color: #6c757d;
+            text-transform: uppercase;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .card-resumo .valor {
+            font-size: 18px;
+            font-weight: bold;
+            color: #212529;
         }
         
-        /* Permite deslizar a tabela suavemente com o dedo no celular */
         .tabela-wrapper { 
             overflow-x: auto; 
             -webkit-overflow-scrolling: touch; 
@@ -120,15 +162,14 @@
             font-size: 14px;
         }
 
-        /* REGRAS ESPECÍFICAS PARA TELAS MAIORES (COMPUTADORES/TABLETS) */
-        @media (min-width: 600px) {
+        /* Ajustes para telas médias/grandes (Tablets e PCs) */
+        @media (min-width: 768px) {
             body { padding: 30px; }
             .container { padding: 25px; }
             h2 { font-size: 1.8rem; }
             
             .busca-container { 
-                flex-direction: row; 
-                max-width: 600px;
+                grid-template-columns: 1.5fr 1.2fr 1fr 1fr auto;
             }
             
             button { width: auto; }
@@ -139,15 +180,59 @@
 <body>
 
 <div class="container">
-    <h2>Buscador de Ocorrências - Controle de Reentregas RCA</h2>
+    <h2>Buscar na Planilha - Controle de Ocorrências</h2>
     <div id="mensagemErro" class="status"></div>
     
     <div class="busca-container">
-        <input type="number" id="buscar" placeholder="Digite o número exato do RCA...">
-        <button id="btnPesquisar" onclick="buscarDados()">Pesquisar</button>
+        <!-- Campo RCA -->
+        <div class="campo-grupo">
+            <label for="buscar">RCA</label>
+            <input type="text" id="buscar" placeholder="Código do RCA...">
+        </div>
+        
+        <!-- Seleção de Ocorrência -->
+        <div class="campo-grupo">
+            <label for="filtroOcorrencia">Ocorrências</label>
+            <select id="filtroOcorrencia">
+                <option value="REENTREGA">Apenas Reentregas</option>
+                <option value="TODAS">Todas as Ocorrências</option>
+            </select>
+        </div>
+
+        <!-- Filtros de Data -->
+        <div class="campo-grupo">
+            <label for="dataInicio">Data Inicial (DTOCOR)</label>
+            <input type="date" id="dataInicio">
+        </div>
+
+        <div class="campo-grupo">
+            <label for="dataFim">Data Final (DTOCOR)</label>
+            <input type="date" id="dataFim">
+        </div>
+        
+        <!-- Botão de Pesquisa -->
+        <div class="btn-container">
+            <button id="btnPesquisar" onclick="buscarDados()">Pesquisar</button>
+        </div>
+    </div>
+
+    <!-- Cards de Resumo -->
+    <div id="painelResumo" class="resumo-container">
+        <div class="card-resumo">
+            <div class="titulo">Qtd. Registros</div>
+            <div id="resumoQtd" class="valor">0</div>
+        </div>
+        <div class="card-resumo">
+            <div class="titulo">Total Valor</div>
+            <div id="resumoValor" class="valor">R$ 0,00</div>
+        </div>
+        <div class="card-resumo">
+            <div class="titulo">Total Peso</div>
+            <div id="resumoPeso" class="valor">0 kg</div>
+        </div>
     </div>
     
-    <div id="semResultados" class="sem-resultados">Aviso: Nenhum registro de REENTREGA localizado para o RCA informado.</div>
+    <div id="semResultados" class="sem-resultados">Aviso: Nenhum registro localizado para os filtros informados.</div>
 
     <div class="tabela-wrapper">
         <table id="tabelaDados">
@@ -163,7 +248,6 @@
     const urlCSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTH4KEirinMtbQwYVJnJnR6K5VRyi6UTTO3nUtVnsJaHb8y60kNqSJYMt5CjKD4iSA4q_Wt_F3QeXXd/pub?gid=0&single=true&output=csv'; 
     let dadosPlanilha = [];
 
-    // Parser que respeita vírgulas entre aspas
     function parseCSV(texto, separador) {
         const linhas = texto.split(/\r?\n/);
         return linhas.map(linha => {
@@ -223,6 +307,80 @@
         divErro.style.display = 'block';
     }
 
+    function converterParaNumero(valor) {
+        if (!valor) return 0;
+        let valorLimpo = valor.replace(/[R$\s]/g, '');
+        if (valorLimpo.includes(',')) {
+            valorLimpo = valorLimpo.replace(/\./g, '').replace(',', '.');
+        }
+        const num = parseFloat(valorLimpo);
+        return isNaN(num) ? 0 : num;
+    }
+
+    // Função para converter texto de data da planilha para Objeto Date do JavaScript
+    function parseDataPlanilha(dataStr) {
+        if (!dataStr) return null;
+        
+        // Remove hora se houver (ex: "25/05/2024 14:30" -> "25/05/2024")
+        const parteData = dataStr.split(' ')[0].trim();
+        
+        // Formato DD/MM/AAAA ou DD/MM/AA
+        if (parteData.includes('/')) {
+            const partes = parteData.split('/');
+            if (partes.length === 3) {
+                let dia = parseInt(partes[0], 10);
+                let mes = parseInt(partes[1], 10) - 1; // Mês no JS começa em 0
+                let ano = parseInt(partes[2], 10);
+                if (ano < 100) ano += 2000; // Ajusta anos de 2 dígitos
+                return new Date(ano, mes, dia);
+            }
+        }
+        
+        // Formato AAAA-MM-DD
+        if (parteData.includes('-')) {
+            const partes = parteData.split('-');
+            if (partes.length === 3) {
+                return new Date(parseInt(partes[0], 10), parseInt(partes[1], 10) - 1, parseInt(partes[2], 10));
+            }
+        }
+
+        return null;
+    }
+
+    function atualizarResumo(linhasFiltradas, cabecalho) {
+        const painelResumo = document.getElementById('painelResumo');
+        
+        if (linhasFiltradas.length === 0) {
+            painelResumo.style.display = 'none';
+            return;
+        }
+
+        const idxValor = cabecalho.findIndex(col => col.toUpperCase() === 'VLTOTAL');
+        const idxPeso = cabecalho.findIndex(col => col.toUpperCase() === 'TOTPESO');
+
+        let totalValor = 0;
+        let totalPeso = 0;
+
+        linhasFiltradas.forEach(linha => {
+            if (idxValor !== -1) totalValor += converterParaNumero(linha[idxValor]);
+            if (idxPeso !== -1) totalPeso += converterParaNumero(linha[idxPeso]);
+        });
+
+        document.getElementById('resumoQtd').innerText = linhasFiltradas.length;
+        
+        document.getElementById('resumoValor').innerText = totalValor.toLocaleString('pt-BR', {
+            style: 'currency',
+            currency: 'BRL'
+        });
+
+        document.getElementById('resumoPeso').innerText = totalPeso.toLocaleString('pt-BR', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        }) + ' kg';
+
+        painelResumo.style.display = 'grid';
+    }
+
     function renderizarTabela(dados, mostrarApenasCabecalho = false) {
         const tabela = document.getElementById('tabelaDados');
         const cabecalho = document.getElementById('cabecalho');
@@ -259,10 +417,14 @@
 
     function buscarDados() {
         const termo = document.getElementById('buscar').value.toLowerCase().trim();
+        const opcaoOcorrencia = document.getElementById('filtroOcorrencia').value;
+        const valDataInicio = document.getElementById('dataInicio').value;
+        const valDataFim = document.getElementById('dataFim').value;
         const divSemResultados = document.getElementById('semResultados');
         
         if (!termo) {
             renderizarTabela([], true);
+            atualizarResumo([], []);
             divSemResultados.style.display = 'none';
             return;
         }
@@ -270,36 +432,63 @@
         const cabecalho = dadosPlanilha[0];
         const idxRca = cabecalho.findIndex(col => col.toUpperCase() === 'RCA');
         const idxSituacao = cabecalho.findIndex(col => col.toUpperCase() === 'SITUACAO' || col.toUpperCase() === 'SITUAÇÃO');
+        const idxDtOcor = cabecalho.findIndex(col => col.toUpperCase() === 'DTOCOR');
 
         if (idxRca === -1 || idxSituacao === -1) {
             alert("Erro interno: Não foi possível localizar as colunas 'RCA' ou 'SITUACAO' na planilha.");
             return;
         }
 
+        // Prepara objetos de data para comparação
+        const dtInicio = valDataInicio ? new Date(valDataInicio + 'T00:00:00') : null;
+        const dtFim = valDataFim ? new Date(valDataFim + 'T23:59:59') : null;
+
         const linhasFiltradas = dadosPlanilha.slice(1).filter(linha => {
             const valorRca = linha[idxRca] ? linha[idxRca].toLowerCase() : '';
             const valorSituacao = linha[idxSituacao] ? linha[idxSituacao].toUpperCase() : '';
 
+            // 1. Filtro RCA
             const bateRca = (valorRca === termo);
-            const bateSituacao = (valorSituacao === 'REENTREGA1' || valorSituacao === 'REENTREGA2');
+            if (!bateRca) return false;
+            
+            // 2. Filtro de Ocorrência
+            let bateSituacao = false;
+            if (opcaoOcorrencia === 'REENTREGA') {
+                bateSituacao = (valorSituacao === 'REENTREGA1' || valorSituacao === 'REENTREGA2');
+            } else if (opcaoOcorrencia === 'TODAS') {
+                bateSituacao = true;
+            }
+            if (!bateSituacao) return false;
 
-            return bateRca && bateSituacao;
+            // 3. Filtro por Período de Data (DTOCOR)
+            if (dtInicio || dtFim) {
+                if (idxDtOcor === -1) return true; // Se a coluna não existir, ignora a trava de data
+                
+                const dtLinha = parseDataPlanilha(linha[idxDtOcor]);
+                if (!dtLinha) return false; // Se não conseguir ler a data da linha, ignora
+
+                if (dtInicio && dtLinha < dtInicio) return false;
+                if (dtFim && dtLinha > dtFim) return false;
+            }
+
+            return true;
         });
 
         if (linhasFiltradas.length > 0) {
             divSemResultados.style.display = 'none';
             renderizarTabela([cabecalho, ...linhasFiltradas]);
+            atualizarResumo(linhasFiltradas, cabecalho);
         } else {
             renderizarTabela([], true);
+            atualizarResumo([], []);
             divSemResultados.style.display = 'block';
         }
     }
 
-    // Permite buscar ao apertar "Enter" ou "Ir/Buscar" no teclado do celular
     document.getElementById('buscar').addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
             buscarDados();
-            document.getElementById('buscar').blur(); // Fecha o teclado do celular ao pesquisar
+            document.getElementById('buscar').blur();
         }
     });
 
