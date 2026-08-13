@@ -202,12 +202,12 @@
         <!-- Filtros de Data -->
         <div class="campo-grupo">
             <label for="dataInicio">Data Inicial (DTOCOR)</label>
-            <input type="date" id="dataInicio">
+            <input type="date" id="dataInicio" onload="this.value = new Date().toLocaleDateString('sv-SE')">
         </div>
 
         <div class="campo-grupo">
             <label for="dataFim">Data Final (DTOCOR)</label>
-            <input type="date" id="dataFim">
+            <input type="date" id="dataFim" onload="this.value = new Date().toLocaleDateString('sv-SE')">
         </div>
         
         <!-- Botão de Pesquisa -->
