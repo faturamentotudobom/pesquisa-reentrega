@@ -202,12 +202,12 @@
         <!-- Filtros de Data -->
         <div class="campo-grupo">
             <label for="dataInicio">Data Inicial (DTOCOR)</label>
-            <input type="date" id="dataInicio" onload="this.value = new Date().toLocaleDateString('sv-SE')">
+            <input type="date" id="dataInicio">
         </div>
 
         <div class="campo-grupo">
             <label for="dataFim">Data Final (DTOCOR)</label>
-            <input type="date" id="dataFim" onload="this.value = new Date().toLocaleDateString('sv-SE')">
+            <input type="date" id="dataFim">
         </div>
         
         <!-- Botão de Pesquisa -->
@@ -491,7 +491,10 @@
             document.getElementById('buscar').blur();
         }
     });
-
+        // Pega a data atual no formato AAAA-MM-DD respeitando o fuso horário local
+      document.getElementById('dataInicio').value = new Date().toLocaleDateString('sv-SE');
+      document.getElementById('dataFim').value = new Date().toLocaleDateString('sv-SE');
+    
     carregarDados();
 </script>
 
